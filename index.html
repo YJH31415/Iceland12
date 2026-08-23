@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Eyjafjallajökull 2010 화산재 확산 시뮬레이터</title>
+  <link href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="map"></div>
+  <aside id="panel">
+    <h1>Eyjafjallajökull 2010</h1>
+    <div class="row"><span>시뮬레이션</span><strong id="sim-time">2010-04-14 00:00 UTC</strong></div>
+    <div class="api-box"><button id="load-api">🌐 API 데이터 불러오기</button><div id="api-status">아직 기상 데이터를 불러오지 않았습니다.</div></div><div class="buttons">
+      <button id="play">▶ 시작</button>
+      <button id="pause">Ⅱ 일시정지</button>
+      <button id="reset">↺ 초기화</button>
+    </div>
+    <label>배속
+      <select id="speed">
+        <option value="60">60×</option>
+        <option value="600" selected>600×</option>
+        <option value="1200">1200×</option>
+        <option value="3600">3600×</option>
+      </select>
+    </label>
+    <label>물리 timestep
+      <select id="dt">
+        <option value="60">1분</option>
+        <option value="300" selected>5분</option>
+        <option value="600">10분</option>
+      </select>
+    </label>
+    <div class="stats">
+      <div>입자 <b id="particle-count">0</b></div>
+      <div>총 질량 <b id="mass">0</b> kg</div>
+      <div>평균 고도 <b id="altitude">0</b> m</div>
+    </div>
+    <div id="aviation-alerts"><h2>항공 화산재 경보</h2><div>런던: <span id="alert-london" data-level="GREEN">GREEN</span></div><div>파리: <span id="alert-paris" data-level="GREEN">GREEN</span></div><div>프랑크푸르트: <span id="alert-frankfurt" data-level="GREEN">GREEN</span></div><small>도시 반경 60 km의 입자 질량을 격자 면적으로 나눈 표면 적재량(kg/m²)을 이용한 시뮬레이션 경보입니다.</small></div>
+    <p class="note">
+      입자는 실제 화산재 하나하나가 아니라 질량을 대표하는 super-particle입니다.
+      바람 이류, 중력 침강, 난류 확산, 지구 곡률, 침적을 계산합니다.
+    </p>
+    <p class="warning">
+      기상 데이터는 버튼을 눌렀을 때 Open-Meteo Historical Weather API의 2020년 ERA5 데이터를 유럽 격자 전체에 대해 한 번 요청합니다. 이후 입자 계산은 브라우저에서 로컬 보간합니다.
+    </p>
+  </aside>
+  <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

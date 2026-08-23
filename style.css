@@ -1,0 +1,10 @@
+html,body,#map{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,sans-serif}
+#panel{position:absolute;z-index:5;top:16px;left:16px;width:310px;padding:16px;border-radius:12px;background:rgba(20,24,30,.92);color:#fff;box-shadow:0 8px 30px #0005}
+h1{font-size:18px;margin:0 0 14px}.row{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:12px}
+.buttons{display:flex;gap:6px;margin-bottom:12px}.buttons button{flex:1}
+button,select{border:0;border-radius:7px;padding:8px;background:#303740;color:#fff}
+label{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin:8px 0}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:14px}.stats div{background:#2a3038;padding:8px;border-radius:7px;font-size:11px;text-align:center}.stats b{display:block;font-size:14px;margin-top:3px}
+.note,.warning{font-size:11px;line-height:1.5;color:#cbd2da}.warning{color:#ffd58a}
+code{font-size:10px}
+.api-box{margin:12px 0;padding:10px;background:#222831;border-radius:8px}.api-box button{width:100%;background:#405a72}.api-box button:disabled{opacity:.6}.api-box #api-status{font-size:10px;color:#b9c4cf;margin-top:7px;line-height:1.4}#aviation-alerts{margin-top:12px;padding:10px;background:#222831;border-radius:8px;font-size:12px}#aviation-alerts h2{font-size:13px;margin:0 0 8px}#aviation-alerts div{display:flex;justify-content:space-between;padding:3px 0}#aviation-alerts span{font-weight:700}#aviation-alerts span[data-level="YELLOW"]{color:#ffd54a}#aviation-alerts span[data-level="ORANGE"]{color:#ff9d3d}#aviation-alerts span[data-level="RED"]{color:#ff5d5d}#aviation-alerts small{display:block;margin-top:6px;color:#9ea8b2;line-height:1.35}
