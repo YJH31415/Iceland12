@@ -73,7 +73,10 @@ function turbulenceParameters(altitudeM){
   // Effective unresolved horizontal velocity scale (m/s).
   // It increases with altitude and is capped to avoid numerical
   // explosion at the top of the simulation.
-  const sigmaH=Math.min(5.0,1.8+197218828383*zKm);
+  // Turbulence tuning: increase these to widen the ash plume.
+  // This is the only user-facing diffusion strength parameter.
+  const TURBULENCE_SCALE = 1.0;
+  const sigmaH=Math.min(5.0, (1.8+0.35*zKm)*TURBULENCE_SCALE);
 
   // Lagrangian decorrelation time (s).
   const TL=Math.min(1800,600+80*zKm);
@@ -108,7 +111,10 @@ function turbulenceParameters(altitudeM){
 // calibrate in a science-fair experiment.
 function KhAt(altitudeM){
   const zKm=Math.max(0,altitudeM)/1000;
-  const sigmaH=Math.min(5.0,1.8+0.35*zKm);
+  // Turbulence tuning: increase these to widen the ash plume.
+  // This is the only user-facing diffusion strength parameter.
+  const TURBULENCE_SCALE = 1.0;
+  const sigmaH=Math.min(5.0, (1.8+0.35*zKm)*TURBULENCE_SCALE);
   const TL=Math.min(1800,600+80*zKm);
   return Math.max(800,sigmaH*sigmaH*TL);
 }
@@ -131,10 +137,14 @@ export function turbulentDisplacement(altitudeM,dt){
   const verticalDrift=pars.dKzDz*dt;
   const verticalRandom=Math.sqrt(2*pars.Kz*dt)*sigma3;
 
+  // advectParticle() passes these values to moveOnEarth(), which expects
+  // velocities (m/s) and applies the integration time dt itself.
+  // Therefore convert the one-step random-walk displacement back to an
+  // equivalent velocity here. This prevents dt from being applied twice.
   return {
-    eastM:east,
-    northM:north,
-    verticalM:verticalDrift+verticalRandom,
+    eastM:east/dt,
+    northM:north/dt,
+    verticalM:(verticalDrift+verticalRandom)/dt,
     Kh:pars.Kh,
     Kz:pars.Kz
   };
