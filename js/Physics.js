@@ -73,7 +73,7 @@ function turbulenceParameters(altitudeM){
   // Effective unresolved horizontal velocity scale (m/s).
   // It increases with altitude and is capped to avoid numerical
   // explosion at the top of the simulation.
-  const sigmaH=Math.min(5.0,1.8+0.35*zKm);
+  const sigmaH=Math.min(5.0,1.8+0.75*zKm);
 
   // Lagrangian decorrelation time (s).
   const TL=Math.min(1800,600+80*zKm);
