@@ -3,9 +3,6 @@ import {moveOnEarth} from "./Coordinate.js";
 const G=9.80665;
 const R_AIR=287.05;
 
-// -------------------------
-// Basic atmospheric physics
-// -------------------------
 export function airDensity(temperatureC, pressurePa){
   return pressurePa/(R_AIR*(temperatureC+273.15));
 }
@@ -32,7 +29,6 @@ export function settlingVelocity(diameter, particleDensity, temperatureC=0, pres
   return Math.max(0,Math.min(vt,8));
 }
 
-// Standard normal random variable.
 export function gaussian(){
   let u=0,v=0;
   while(u===0)u=Math.random();
@@ -40,134 +36,69 @@ export function gaussian(){
   return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
 }
 
-// -------------------------------------------------------------
-// Turbulent diffusion model for volcanic-ash super-particles
-//
-// Fickian random-walk relation:
-//      <x'^2> = 2 K t
-// therefore, for one integration step:
-//      Δx_turb = sqrt(2 K Δt) ξ
-//
-// Eddy diffusivity is parameterized through the Lagrangian
-// turbulence relation:
-//      K = sigma_turb^2 * T_L
-// where sigma_turb is the unresolved turbulent velocity scale and
-// T_L is the Lagrangian decorrelation time.
-//
-// Horizontal turbulence is intentionally stronger than vertical
-// turbulence, which produces the elongated ash plume seen in the
-// atmosphere rather than an unrealistically narrow particle trail.
-//
-// Vertical K is height-dependent. For a variable diffusivity,
-// the random-walk form includes the Fickian drift term dK/dz:
-//      dz = (dKz/dz)dt + sqrt(2 Kz dt) ξ_z
-//
-// These are effective sub-grid atmospheric transport parameters;
-// they are not additional API wind values and do not override the
-// resolved Open-Meteo advection field.
-// -------------------------------------------------------------
+/*
+ * Lagrangian turbulent-diffusion parameterisation.
+ *
+ * Fickian turbulent diffusion is represented by the stochastic term
+ *     dX = U dt + sqrt(2 K_h dt) dW
+ *     dZ = W dt + sqrt(2 K_v dt) dW_z
+ * where K is an eddy diffusivity [m^2/s].
+ *
+ * We estimate K_h from the standard mixing relation
+ *     K_h = sigma_u^2 T_L
+ * with sigma_u = I_h |U| and T_L = L/sigma_u, giving
+ *     K_h = I_h |U| L.
+ *
+ * I_h is a dimensionless horizontal turbulence intensity and L is a
+ * Lagrangian mixing length. They are bounded so the numerical random walk
+ * cannot explode during a 5-minute integration step.
+ *
+ * This is an effective sub-grid parameterisation, not measured turbulence.
+ */
+export function turbulentDiffusivity(altitude, u, v){
+  const speed=Math.max(1,Math.hypot(u,v));
+  const z=Math.max(0,altitude);
 
-function turbulenceParameters(altitudeM){
-  const zKm=Math.max(0,altitudeM)/1000;
+  // Neutral/free-tropospheric effective turbulence intensity.
+  // The intensity decreases mildly with height, while retaining enough
+  // unresolved mixing to represent a regional volcanic-ash plume.
+  const intensity=Math.max(0.12,Math.min(0.25,0.25-0.000008*z));
 
-  // Effective unresolved horizontal velocity scale (m/s).
-  // It increases with altitude and is capped to avoid numerical
-  // explosion at the top of the simulation.
-  const sigmaH=Math.min(5.0,1.8+0.35*zKm);
+  // Lagrangian mixing length. It grows with altitude but is bounded to keep
+  // the stochastic step physically/numerically reasonable.
+  const L=Math.max(200,Math.min(800,0.05*Math.max(z,4000)));
 
-  // Lagrangian decorrelation time (s).
-  const TL=Math.min(1800,600+80*zKm);
+  const Kh=Math.max(50,Math.min(1200,intensity*speed*L));
 
-  // K_h = sigma_h^2 * T_L  [m²/s]
-  const Kh=Math.max(800,sigmaH*sigmaH*TL);
-
-  // Vertical turbulent velocity scale is smaller than horizontal.
-  const sigmaV=Math.min(0.9,0.25+0.05*zKm);
-  const Kz=Math.max(5,sigmaV*sigmaV*TL*0.25);
-
-  // A smooth altitude derivative used by the Fickian variable-K
-  // correction. The derivative is deliberately capped.
-  const dKhDz=0; // K_h varies only with altitude; no horizontal Fickian drift term is needed.
-
-  // Kz is approximately proportional to (sigmaV^2 * TL), so use
-  // a numerical derivative for consistency with the parameterization.
-  const dz=50;
-  const z1=Math.max(0,altitudeM-dz);
-  const z2=altitudeM+dz;
-  const KzAt=(z)=>{
-    const zz=z/1000;
-    const sv=Math.min(0.9,0.25+0.05*zz);
-    const tl=Math.min(1800,600+80*zz);
-    return Math.max(5,sv*sv*tl*0.25);
-  };
-
-  return {Kh,Kz,dKhDz,dKzDz:(KzAt(z2)-KzAt(z1))/(z2-z1)};
-}
-
-// Small helper kept separate so the model is easy to inspect and
-// calibrate in a science-fair experiment.
-function KhAt(altitudeM){
-  const zKm=Math.max(0,altitudeM)/1000;
-  const sigmaH=Math.min(5.0,1.8+0.35*zKm);
-  const TL=Math.min(1800,600+80*zKm);
-  return Math.max(800,sigmaH*sigmaH*TL);
-}
-
-export function turbulentDisplacement(altitudeM,dt){
-  const z=Math.max(0,altitudeM);
-  const sigma=gaussian();
-  const sigma2=gaussian();
-  const sigma3=gaussian();
-
-  const pars=turbulenceParameters(z);
-
-  // Horizontal isotropic turbulent random walk.
-  const horizontalStd=Math.sqrt(2*pars.Kh*dt);
-  const east=horizontalStd*sigma;
-  const north=horizontalStd*sigma2;
-
-  // Variable-K vertical random walk:
-  // deterministic Fickian drift + stochastic diffusion.
-  const verticalDrift=pars.dKzDz*dt;
-  const verticalRandom=Math.sqrt(2*pars.Kz*dt)*sigma3;
-
-  return {
-    eastM:east,
-    northM:north,
-    verticalM:verticalDrift+verticalRandom,
-    Kh:pars.Kh,
-    Kz:pars.Kz
-  };
+  // Vertical mixing is weaker than horizontal mixing.
+  const Kv=Math.max(0.5,Math.min(80,0.08*Kh));
+  return {Kh,Kv,intensity,mixingLength:L};
 }
 
 export function advectParticle(p,weather,dt,time){
   const s=weather.sample(p.latitude,p.longitude,p.altitude,time);
   const vt=settlingVelocity(p.diameter,p.density,0,70000);
 
-  // Resolved advection comes directly from the meteorological field.
-  // Turbulence is added as a sub-grid stochastic displacement.
-  const turb=turbulentDisplacement(p.altitude,dt);
+  const {Kh,Kv}=turbulentDiffusivity(p.altitude,s.u,s.v);
+
+  // Euler-Maruyama random walk for the advection-diffusion equation:
+  // displacement = deterministic wind advection + sqrt(2*K*dt)*N(0,1).
+  const east=s.u*dt + Math.sqrt(2*Kh*dt)*gaussian();
+  const north=s.v*dt + Math.sqrt(2*Kh*dt)*gaussian();
+  const vertical=(s.w-vt)*dt + Math.sqrt(2*Kv*dt)*gaussian();
 
   const next=moveOnEarth(
     p.latitude,p.longitude,p.altitude,
-    s.u*dt+turb.eastM,
-    s.v*dt+turb.northM,
-    s.w*dt-vt*dt+turb.verticalM,
-    dt
+    east,north,vertical,1
   );
-
   p.latitude=next.latitude;
   p.longitude=next.longitude;
   p.altitude=next.altitude;
   p.age+=dt;
   p.lastWind={u:s.u,v:s.v,w:s.w};
   p.settling=vt;
+  p.turbulence={Kh,Kv};
 
-  // Store effective diffusivities for diagnostics without changing
-  // the rest of the simulation/UI.
-  p.turbulence={Kh:turb.Kh,Kz:turb.Kz};
-
-  // Surface deposition.
   if(p.altitude<=0){
     p.altitude=0;
     p.alive=false;
